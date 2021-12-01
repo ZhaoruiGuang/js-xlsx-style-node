@@ -1,6 +1,6 @@
 {
   "name": "js-xlsx-style-node",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "This is a package that processes xlsx through JS, while supporting processing styles(一个支持设置样式的 xlsx 插件)",
   "main": "src/index.js",
   "private": false,
