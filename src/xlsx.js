@@ -19877,6 +19877,15 @@ var HTML_ = (function() {
 				if(cell.z != null) sp["data-z"] = cell.z;
 				if(cell.l && (cell.l.Target || "#").charAt(0) != "#") w = '<a href="' + cell.l.Target +'">' + w + '</a>';
 			}
+			if(o.tdStyle){
+				var tdStyleStr = '';
+				for(var key in o.tdStyle){
+					if(o.tdStyle[key]){
+						tdStyleStr = tdStyleStr + key + ':' + o.tdStyle[key] + ';'
+					}
+				}
+				sp["style"] =  tdStyleStr;
+			}
 			sp.id = (o.id || "sjs") + "-" + coord;
 			oo.push(writextag('td', w, sp));
 		}
@@ -19885,7 +19894,18 @@ var HTML_ = (function() {
 	}
 	function make_html_preamble(ws, R, o) {
 		var out = [];
-		return out.join("") + '<table' + (o && o.id ? ' id="' + o.id + '"' : "") + '>';
+		var tableStyleStr = ' style="';
+		if(o.tableStyle){
+			for(var key in o.tableStyle){
+				if(o.tableStyle[key]){
+					tableStyleStr = tableStyleStr + key + ':' + o.tableStyle[key] + ';'
+				}
+			}
+			tableStyleStr += '"';
+		}else{
+			tableStyleStr += '"';
+		};
+		return out.join("") + '<table' + (o && o.id ? ' id="' + o.id + '"' : "") + tableStyleStr + '>';
 	}
 	var _BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
 	var _END = '</body></html>';
@@ -19900,7 +19920,44 @@ var HTML_ = (function() {
 		for(var R = r.s.r; R <= r.e.r; ++R) out.push(make_html_row(ws, r, R, o));
 		out.push("</table>" + footer);
 		return out.join("");
-
+	}
+	
+	function format_ws_data(ws, r, R, o) {
+		var M = (ws['!merges'] ||[]);
+		var arr = [];
+		for(var C = r.s.c; C <= r.e.c; ++C) {
+			var RS = 0, CS = 0;
+			for(var j = 0; j < M.length; ++j) {
+				if(M[j].s.r > R || M[j].s.c > C) continue;
+				if(M[j].e.r < R || M[j].e.c < C) continue;
+				if(M[j].s.r < R || M[j].s.c < C) { RS = -1; break; }
+				RS = M[j].e.r - M[j].s.r + 1; CS = M[j].e.c - M[j].s.c + 1; break;
+			}
+			if(RS < 0) continue;
+			var coord = encode_cell({r:R,c:C});
+			var cell = o.dense ? (ws[R]||[])[C] : ws[coord];
+			var item = ({});
+			if(RS > 1) item.rowspan = RS;
+			if(CS > 1) item.colspan = CS;
+			item.t = cell&&cell.t || 'e';	// 自定义参数 e, 代表 empty,表示空
+			item.v = cell&&cell.v || '';
+			if(cell&&cell.l&&(cell.l.Target || "#").charAt(0) != "#"){
+				item.t = 'l' ; // 自定义类型值 l ,代表 link,链接
+				item.h = cell&&cell.l&&cell.l.Target || ''; // 自定义参数 h ,代表 href,跳转地址
+			};
+			arr.push(item);
+		}
+		return arr;
+	}
+	function sheet_to_format_json(ws,opts){
+		var o = opts || {}; 
+		var out = [];
+		var r = decode_range(ws['!ref']);
+		o.dense = Array.isArray(ws);
+		for(var R = r.s.r; R <= r.e.r; ++R){
+			out.push(format_ws_data(ws, r, R, o))
+		};
+		return out;
 	}
 	return {
 		to_workbook: html_to_book,
@@ -19909,7 +19966,8 @@ var HTML_ = (function() {
 		BEGIN: _BEGIN,
 		END: _END,
 		_preamble: make_html_preamble,
-		from_sheet: sheet_to_html
+		from_sheet: sheet_to_html,
+		sheet_to_format_json:sheet_to_format_json,
 	};
 })();
 
@@ -22439,6 +22497,7 @@ var utils = {
 	sheet_to_csv: sheet_to_csv,
 	sheet_to_txt: sheet_to_txt,
 	sheet_to_json: sheet_to_json,
+	sheet_to_format_json: HTML_.sheet_to_format_json,
 	sheet_to_html: HTML_.from_sheet,
 	sheet_to_formulae: sheet_to_formulae,
 	sheet_to_row_object_array: sheet_to_json

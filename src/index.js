@@ -19,6 +19,10 @@ var _workbook = _interopRequireDefault(require("./workbook"));
 
 var _fs = require('fs');
 
+/*
+	解析成纯 json 数据, 丢弃超链接\合并单元格等信息
+*/
+
 var parse = function parse(mixed, options) {
     if (options === void 0) {
         options = {};
@@ -43,6 +47,41 @@ var parse = function parse(mixed, options) {
 
 exports.parse = parse;
 
+/*
+	解析成带信息的格式化的 json 数据, 包括超链接/合并单元信息
+*/
+var parseToJson = function parse(mixed, options) {
+    if (options === void 0) {
+        options = {};
+    }
+
+    var workSheet = _xlsx.default[
+        (0, _helpers.isString)(mixed) ? "readFile" : "read"
+    ](mixed, options);
+
+    return Object.keys(workSheet.Sheets).map(function (name) {
+        var sheet = workSheet.Sheets[name];
+		if(sheet['!ref']){
+			// 非空文件
+			return {
+			    name,
+			    data: _xlsx.default.utils.sheet_to_format_json(sheet,options),
+				merges:sheet['!merges'] || [],
+			};
+		}else{
+			// 空文件
+			return {
+			    name,
+			    data:''
+			};
+		}
+    });
+};
+exports.parseToJson = parseToJson;
+
+/*
+	解析成 html 代码,代码中已处理好超链接/合并单元格等信息
+*/
 var parseToHtml = function parse(mixed, options) {
     if (options === void 0) {
         options = {};
@@ -54,16 +93,26 @@ var parseToHtml = function parse(mixed, options) {
 
     return Object.keys(workSheet.Sheets).map(function (name) {
         var sheet = workSheet.Sheets[name];
-        return {
-            name,
-            data: _xlsx.default.utils.sheet_to_html(sheet, {
-                header: options.header,
-                footer: options.footer,
-            }),
-        };
+		if(sheet['!ref']){
+			// 非空文件
+			return {
+			    name,
+			    data: _xlsx.default.utils.sheet_to_html(sheet, {
+			        header: options.header,
+			        footer: options.footer,
+					tableStyle:options.tableStyle || {},
+					tdStyle:options.tdStyle || {},
+			    }),
+			};
+		}else{
+			// 空文件
+			return {
+			    name,
+			    data:''
+			};
+		}
     });
 };
-
 exports.parseToHtml = parseToHtml;
 
 var parseMetadata = function parseMetadata(mixed, options) {
@@ -150,6 +199,7 @@ exports._XLSX = _XLSX;
 var _default = {
     parse,
     parseToHtml,
+	parseToJson,
     parseMetadata,
     build,
     write,
