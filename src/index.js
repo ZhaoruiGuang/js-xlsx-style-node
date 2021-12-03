@@ -207,3 +207,8 @@ var _default = {
     _XLSX,
 };
 exports.default = _default;
+
+/* 
+	在线代码压缩工具 :
+	https://jsmin.bmcx.com/
+*/
